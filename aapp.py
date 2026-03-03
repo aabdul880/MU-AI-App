@@ -1,91 +1,161 @@
 import streamlit as st
 from openai import OpenAI
 
-# 1. إعدادات الصفحة وإخفاء العناصر غير المرغوبة
-st.set_page_config(page_title="BDS System", layout="wide")
+# إعدادات الصفحة
+st.set_page_config(page_title="BDS - Decision Support", layout="wide")
 
-hide_elements = """
-    <style>
-    header {visibility: hidden !important;}
-    [data-testid="stHeader"] {display: none !important;}
-    footer {display: none !important;}
-    #viewerBadge_container__1QS1n {display: none !important;}
-    .stAppDeployButton {display: none !important;}
-    [data-testid="stToolbar"] {
-        visibility: visible !important;
-        top: 10px !important;
-        right: 10px !important;
-    }
-    .block-container {padding-top: 2rem !important;}
-    </style>
-"""
-st.markdown(hide_elements, unsafe_allow_html=True)
-
-# 2. نظام اللغة والإعدادات (داخل السايدبار)
+# --- إعدادات اللغة ---
 if 'lang' not in st.session_state:
     st.session_state.lang = 'Arabic'
 
-with st.sidebar:
-    st.markdown("### ⚙️ Settings / الإعدادات")
-    lang_choice = st.radio("Language / اللغة", ["Arabic", "English"], 
-                           index=0 if st.session_state.lang == 'Arabic' else 1)
-    st.session_state.lang = lang_choice
-    st.divider()
-    api_key = st.text_input("OpenAI Key", type="password")
-    client = OpenAI(api_key=api_key) if api_key else None
+lang = st.sidebar.selectbox("Choose Language / اختر اللغة", ["Arabic", "English"])
+st.session_state.lang = lang
 
-# 3. نصوص التطبيق
+# قاموس النصوص
 texts = {
     "Arabic": {
         "title": "🛡️ أداة تحليل القرارات الإدارية (BDS)",
-        "org": "🏛️ بروفايل المنظمة",
-        "lead": "👤 بروفايل القائد",
-        "desc": "📝 تفاصيل القرار الحالي",
-        "btn": "تحليل القرار",
-        "style": "الأسلوب القيادي",
-        "trust": "مستوى الثقة مع الفريق",
+        "api_key": "أدخل مفتاح OpenAI API",
+        "org_profile": "🏛️ بروفايل المنظمة (إدارة المنظمة)",
+        "lead_profile": "👤 بروفايل القائد",
         "sector": "القطاع",
-        "size": "حجم المنظمة"
+        "size": "حجم المنظمة",
+        "age": "عمر المنظمة",
+        "change_accept": "تقبل الموظفين للتغيير",
+        "autonomy": "استقلالية القرار",
+        "lead_style": "الأسلوب القيادي",
+        "supervision": "عدد الموظفين تحت الإشراف",
+        "trust": "مستوى الثقة",
+        "tenure": "غالبية الموظفين",
+        "decision_details": "📝 تفاصيل القرار الحالي",
+        "decision_placeholder": "اشرح القرار الذي تود اتخاذه بكلامك العادي...",
+        "flexibility": "قابلية القرار للتعديل",
+        "timing": "متى يبدأ التنفيذ؟",
+        "visibility": "مدى معرفة الموظفين بالقرار",
+        "impacted_group": "فئة الموظفين المتأثرين",
+        "impact_level": "مدى تأثر الفئة",
+        "analyze_btn": "تحليل القرار بناءً على البيانات",
+        "error_api": "يرجى إدخال مفتاح API أولاً.",
+        "success_msg": "✅ التحليل الأكاديمي المخصص:",
+        "options": {
+            "sector": ["حكومي", "خاص"],
+            "size": ["١٠٠ فأقل", "١٠٠ إلى ٣٥٠", "أكثر من ٣٥٠"],
+            "age": ["أقل من ٥ سنوات", "٥-١٥ سنة", "أكثر من ١٥ سنة"],
+            "change": ["بإيجابية", "أحياناً صعب", "صعب دائماً"],
+            "autonomy": ["مستقلة بالكامل", "مستقلة جزئياً", "غير مستقلة"],
+            "style": ["توجيهي", "تشاركي", "تفويضي"],
+            "lead_span": ["٥ فأقل", "٥-١٥", "١٥ فأكثر"],
+            "trust": ["عالي", "متوسط", "منخفض"],
+            "tenure": ["جدد (أقل من ٣ سنوات)", "متوسط", "قدامى (أكثر من ٧ سنوات)"],
+            "flex": ["قابل للتعديل", "قابل جزئياً", "غير قابل"],
+            "timing": ["فوري", "خلال أشهر", "تدريجي"],
+            "visibility": ["سري تماماً", "يوجد تسريبات", "معلن رسمياً"],
+            "impact": ["بسيط", "متوسط", "جوهري"]
+        }
     },
     "English": {
         "title": "🛡️ Decision Support System (BDS)",
-        "org": "🏛️ Organization Profile",
-        "lead": "👤 Leader Profile",
-        "desc": "📝 Decision Details",
-        "btn": "Analyze Decision",
-        "style": "Leadership Style",
-        "trust": "Trust Level",
+        "api_key": "Enter OpenAI API Key",
+        "org_profile": "🏛️ Organization Profile (Management)",
+        "lead_profile": "👤 Leader Profile",
         "sector": "Sector",
-        "size": "Org Size"
+        "size": "Organization Size",
+        "age": "Organization Age",
+        "change_accept": "Employee Change Acceptance",
+        "autonomy": "Decision Autonomy",
+        "lead_style": "Leadership Style",
+        "supervision": "Number of Direct Reports",
+        "trust": "Trust Level with Team",
+        "tenure": "Majority of Staff Tenure",
+        "decision_details": "📝 Current Decision Details",
+        "decision_placeholder": "Describe the decision you want to take in your own words...",
+        "flexibility": "Decision Flexibility",
+        "timing": "Execution Timing",
+        "visibility": "Staff Awareness Level",
+        "impacted_group": "Impacted Employee Group",
+        "impact_level": "Impact Intensity",
+        "analyze_btn": "Analyze Decision Based on Data",
+        "error_api": "Please enter the API key first.",
+        "success_msg": "✅ Personalized Academic Analysis:",
+        "options": {
+            "sector": ["Government", "Private"],
+            "size": ["100 or less", "100 to 350", "More than 350"],
+            "age": ["Less than 5 years", "5-15 years", "More than 15 years"],
+            "change": ["Positively", "Sometimes difficult", "Always difficult"],
+            "autonomy": ["Fully independent", "Partially independent", "Not independent"],
+            "style": ["Directive", "Participative", "Delegative"],
+            "lead_span": ["5 or less", "5-15", "15 or more"],
+            "trust": ["High", "Medium", "Low"],
+            "tenure": ["New (less than 3 years)", "Intermediate", "Seniors (7+ years)"],
+            "flex": ["Adjustable", "Partially Adjustable", "Non-adjustable"],
+            "timing": ["Immediate", "Within months", "Gradual"],
+            "visibility": ["Top Secret", "Leaked", "Officially Announced"],
+            "impact": ["Low", "Medium", "High"]
+        }
     }
 }
+
 t = texts[st.session_state.lang]
 
-# 4. الواجهة الرئيسية (هنا تظهر البيانات)
+# إدخال مفتاح API
+api_key = st.sidebar.text_input(t["api_key"], type="password")
+client = OpenAI(api_key=api_key) if api_key else None
+
 st.title(t["title"])
 
-# بروفايل المنظمة
-with st.expander(t["org"]):
+# --- 1. بروفايل المنظمة ---
+with st.expander(t["org_profile"]):
     col1, col2 = st.columns(2)
     with col1:
-        st.selectbox(t["sector"], ["حكومي", "خاص"] if st.session_state.lang == 'Arabic' else ["Government", "Private"])
+        org_sector = st.selectbox(t["sector"], t["options"]["sector"])
+        org_size = st.selectbox(t["size"], t["options"]["size"])
+        org_age = st.selectbox(t["age"], t["options"]["age"])
     with col2:
-        st.selectbox(t["size"], ["صغير", "متوسط", "كبير"] if st.session_state.lang == 'Arabic' else ["Small", "Medium", "Large"])
+        org_change = st.selectbox(t["change_accept"], t["options"]["change"])
+        org_autonomy = st.selectbox(t["autonomy"], t["options"]["autonomy"])
 
-# بروفايل القائد (الآن ستظهر البيانات هنا)
-with st.expander(t["lead"]):
+# --- 2. بروفايل القائد ---
+with st.expander(t["lead_profile"]):
     col3, col4 = st.columns(2)
     with col3:
-        st.selectbox(t["style"], ["توجيهي", "تشاركي", "تفويضي"] if st.session_state.lang == 'Arabic' else ["Directive", "Participative", "Delegative"])
+        lead_style = st.selectbox(t["lead_style"], t["options"]["style"])
+        lead_span = st.selectbox(t["supervision"], t["options"]["lead_span"])
     with col4:
-        st.select_slider(t["trust"], options=["منخفض", "متوسط", "عالي"] if st.session_state.lang == 'Arabic' else ["Low", "Medium", "High"])
+        lead_trust = st.selectbox(t["trust"], t["options"]["trust"])
+        lead_staff_tenure = st.selectbox(t["tenure"], t["options"]["tenure"])
 
 st.divider()
-st.subheader(t["desc"])
-decision_text = st.text_area("..." if st.session_state.lang == 'Arabic' else "Describe decision...")
 
-if st.button(t["btn"]):
-    if not client:
-        st.error("أدخل المفتاح من الإعدادات")
-    else:
-        st.info("جاري المعالجة...")
+# --- 3. إدخال القرار ---
+st.subheader(t["decision_details"])
+decision_text = st.text_area(t["decision_placeholder"])
+
+if decision_text:
+    col5, col6 = st.columns(2)
+    with col5:
+        dec_flex = st.selectbox(t["flexibility"], t["options"]["flex"])
+        dec_timing = st.selectbox(t["timing"], t["options"]["timing"])
+    with col6:
+        dec_visibility = st.selectbox(t["visibility"], t["options"]["visibility"])
+        target_group = st.text_input(t["impacted_group"])
+    
+    impact_level = st.select_slider(t["impact_level"], options=t["options"]["impact"])
+
+    if st.button(t["analyze_btn"]):
+        if not client:
+            st.error(t["error_api"])
+        else:
+            with st.spinner("Analyzing..."):
+                system_msg = f"Analyze this decision for a {st.session_state.lang} speaking leader. Context: Sector {org_sector}, Style {lead_style}, Trust {lead_trust}, Impact {impact_level}."
+                
+                # ملاحظة: الذكاء الاصطناعي سيرد بنفس لغة الواجهة المختارة
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": f"Decision: {decision_text}. Please provide the analysis in {st.session_state.lang}."}
+                    ]
+                )
+                
+                st.success(t["success_msg"])
+                st.write(response.choices[0].message.content)
