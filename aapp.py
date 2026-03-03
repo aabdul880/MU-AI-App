@@ -1,127 +1,88 @@
 import streamlit as st
 from openai import OpenAI
 
-# 1. إعدادات الصفحة
+# 1. إعدادات الصفحة (بدون أكواد إخفاء CSS)
 st.set_page_config(page_title="BDS System", layout="wide")
 
-# 2. تهيئة الذاكرة
-if 'org_done' not in st.session_state: st.session_state.org_done = False
-if 'lead_done' not in st.session_state: st.session_state.lead_done = False
+# 2. تهيئة مخزن البيانات لنظام الدخول
+if 'user_type' not in st.session_state: 
+    st.session_state.user_type = None
 
-# 3. القائمة الجانبية
-with st.sidebar:
-    lang = st.radio("اللغة / Language", ["Arabic", "English"])
-    st.divider()
-    api_key = st.text_input("OpenAI Key", type="password")
-    client = OpenAI(api_key=api_key) if api_key else None
-
-t = {
-    "Arabic": {
-        "title": "🛡️ أداة تحليل القرارات الإدارية (BDS)",
-        "org_h": "🏛️ بيانات المنظمة",
-        "lead_h": "👤 بيانات القائد",
-        "save": "حفظ البيانات",
-        "edit": "تعديل",
-        "done": "تم الحفظ بنجاح ✅",
-        "dec_h": "📝 تفاصيل القرار الحالي",
-        "analyze": "تحليل القرار الآن",
-        "result_h": "📊 نتيجة التحليل الأكاديمي"
-    },
-    "English": {
-        "title": "🛡️ Decision Support System (BDS)",
-        "org_h": "🏛️ Organization Data",
-        "lead_h": "👤 Leader Data",
-        "save": "Save Data",
-        "edit": "Edit",
-        "done": "Saved Successfully ✅",
-        "dec_h": "📝 Current Decision Details",
-        "analyze": "Analyze Now",
-        "result_h": "📊 Academic Analysis Result"
-    }
-}[lang]
-
-st.title(t["title"])
-
-# --- المرحلة 1: بيانات المنظمة ---
-with st.expander(t["org_h"], expanded=not st.session_state.org_done):
-    if st.session_state.org_done:
-        st.success(t["done"])
-        if st.button(t["edit"], key="edit_org"):
-            st.session_state.org_done = False
+# 3. واجهة تسجيل الدخول
+if st.session_state.user_type is None:
+    st.title("🛡️ نظام دعم القرار (BDS)")
+    st.subheader("يرجى اختيار نوع الدخول")
+    
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("🏛️ دخول إدارة المنظمة"):
+            st.session_state.user_type = "admin"
             st.rerun()
-    else:
+    with col_b:
+        if st.button("👤 دخول القائد"):
+            st.session_state.user_type = "leader"
+            st.rerun()
+else:
+    # زر خروج للعودة للقائمة الرئيسية يظهر في الجانب
+    if st.sidebar.button("تسجيل الخروج"):
+        st.session_state.user_type = None
+        st.rerun()
+
+    # القائمة الجانبية لإعدادات الـ API
+    with st.sidebar:
+        st.divider()
+        api_key = st.text_input("OpenAI Key", type="password")
+        client = OpenAI(api_key=api_key) if api_key else None
+
+    # --- واجهة إدارة المنظمة (تظهر فقط عند دخول المنظمة) ---
+    if st.session_state.user_type == "admin":
+        st.title("🏛️ إعدادات المنظمة (خاص بالإدارة)")
+        st.info("البيانات هنا تعبأ لمرة واحدة من قبل الإدارة.")
+        
         col1, col2 = st.columns(2)
         with col1:
-            sec = st.selectbox("القطاع", ["حكومي", "خاص"])
-            sz = st.selectbox("حجم المنظمة", ["١٠٠ فأقل", "١٠٠ إلى ٣٥٠", "أكثر من ٣٥٠"])
-            ag = st.selectbox("عمر المنظمة", ["أقل من خمس سنوات", "٥-١٥", "أكثر من ١٥"])
+            st.selectbox("القطاع", ["حكومي", "خاص"], key="org_sector")
+            st.selectbox("حجم المنظمة", ["١٠٠ فأقل", "١٠٠ إلى ٣٥٠", "أكثر من ٣٥٠"], key="org_size")
+            st.selectbox("عمر المنظمة", ["أقل من خمس سنوات", "٥-١٥", "أكثر من ١٥"], key="org_age")
         with col2:
-            ch = st.selectbox("تقبل الموظفين للتغيير عادة", ["بإيجابية", "أحياناً صعب", "صعب دائماً"])
-            aut = st.selectbox("استقلالية اتخاذ القرار", ["مستقلة بالكامل", "مستقلة جزئياً", "غير مستقلة"])
-        if st.button(t["save"], key="btn_org"):
-            st.session_state.org_saved_data = f"Sector: {sec}, Size: {sz}, Age: {ag}, Change: {ch}, Autonomy: {aut}"
-            st.session_state.org_done = True
-            st.rerun()
+            st.selectbox("تقبل الموظفين للتغيير", ["بإيجابية", "أحياناً صعب", "صعب دائماً"], key="org_change")
+            st.selectbox("استقلالية اتخاذ القرار", ["مستقلة بالكامل", "مستقلة جزئياً", "غير مستقلة"], key="org_autonomy")
+        
+        if st.button("حفظ بيانات المنظمة"):
+            st.success("تم الحفظ بنجاح ✅")
 
-# --- المرحلة 2: بيانات القائد ---
-with st.expander(t["lead_h"], expanded=not st.session_state.lead_done):
-    if st.session_state.lead_done:
-        st.success(t["done"])
-        if st.button(t["edit"], key="edit_lead"):
-            st.session_state.lead_done = False
-            st.rerun()
-    else:
-        col3, col4 = st.columns(2)
-        with col3:
-            sty = st.selectbox("الأسلوب القيادي", ["توجيهي", "تشاركي", "تفويضي"])
-            rep = st.selectbox("عدد الموظفين تحت الإشراف المباشر", ["٥ فأقل", "٥-١٥", "١٥ فأكثر"])
-        with col4:
-            tru = st.selectbox("مستوى الثقة بينك وبين الفريق", ["عالي", "متوسط", "منخفض"])
-            ten = st.selectbox("غالبية موظفيك", ["جدد (أقل من ٣ سنوات)", "متوسط", "قدامى (أكثر من ٧ سنوات)"])
-        if st.button(t["save"], key="btn_lead"):
-            st.session_state.lead_saved_data = f"Style: {sty}, Reports: {rep}, Trust: {tru}, Tenure: {ten}"
-            st.session_state.lead_done = True
-            st.rerun()
+    # --- واجهة القائد (تظهر فقط عند دخول القائد) ---
+    elif st.session_state.user_type == "leader":
+        st.title("👤 لوحة تحكم القائد")
+        
+        # بروفايل القائد (خاص بالقائد فقط)
+        with st.expander("👤 بروفايل القائد (تعبأ عند التسجيل)", expanded=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.selectbox("الأسلوب القيادي", ["توجيهي", "تشاركي", "تفويضي"], key="l_style")
+                st.selectbox("عدد الموظفين تحت الإشراف", ["٥ فأقل", "٥-١٥", "١٥ فأكثر"], key="l_reports")
+            with c2:
+                st.selectbox("مستوى الثقة مع الفريق", ["عالي", "متوسط", "منخفض"], key="l_trust")
+                st.selectbox("غالبية موظفيك", ["جدد (أقل من ٣ سنوات)", "متوسط", "قدامى (أكثر من ٧ سنوات)"], key="l_tenure")
 
-st.divider()
+        st.divider()
+        
+        # منطقة القرار
+        st.subheader("📝 اتخاذ قرار جديد")
+        decision_input = st.text_area("اشرح قرارك هنا بكلامك العادي...", height=100)
+        
+        if decision_input:
+            st.markdown("##### تفاصيل القرار:")
+            c3, c4 = st.columns(2)
+            with c3:
+                st.selectbox("قابلية القرار للتعديل", ["قابل للتعديل", "قابل جزئياً", "غير قابل"], key="d_flex")
+                st.selectbox("متى يبدأ التنفيذ؟", ["فوري", "خلال أشهر", "تدريجي"], key="d_time")
+            with c4:
+                st.selectbox("مدى معرفة الموظفين", ["سري تماماً", "يوجد تسريبات", "معلن رسمياً"], key="d_vis")
+                st.text_input("فئة الموظفين المتأثرين بالقرار ؟", key="d_target")
+            
+            st.select_slider("ما مدى تأثر كل فئة ؟", options=["بسيط", "متوسط", "جوهري"], key="d_impact")
 
-# --- المرحلة 3: القرار والتحليل ---
-st.subheader(t["dec_h"])
-decision_text = st.text_area("اشرح قرارك هنا بكلامك العادي...", height=100)
-
-if decision_text:
-    c1, c2 = st.columns(2)
-    with c1:
-        d_flx = st.selectbox("قابلية القرار للتعديل", ["قابل للتعديل", "قابل جزئياً", "غير قابل"])
-        d_tim = st.selectbox("متى يبدأ التنفيذ؟", ["فوري", "خلال أشهر", "تدريجي"])
-    with c2:
-        d_vis = st.selectbox("مدى معرفة الموظفين بالقرار", ["سري تماماً", "يوجد تسريبات", "معلن رسمياً"])
-        d_tar = st.text_input("ماهي فئة الموظفين المتأثرين بالقرار؟")
-    
-    d_imp = st.select_slider("ما مدى تأثر هذه الفئة؟", options=["بسيط", "متوسط", "جوهري"])
-
-    if st.button(t["analyze"]):
-        if not client:
-            st.error("يرجى إدخال API Key من القائمة الجانبية")
-        else:
-            with st.spinner("جاري التحليل العلمي..."):
-                # تجميع كل البيانات للذكاء الاصطناعي
-                full_context = f"""
-                Organization: {st.session_state.get('org_saved_data', 'N/A')}
-                Leader: {st.session_state.get('lead_saved_data', 'N/A')}
-                Decision: {decision_text}
-                Details: Flexibility {d_flx}, Timing {d_tim}, Visibility {d_vis}, Impact {d_imp} on {d_target if 'd_target' in locals() else 'staff'}.
-                """
-                
-                response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": f"You are a professional management consultant. Provide a detailed academic analysis in {lang}."},
-                        {"role": "user", "content": full_context}
-                    ]
-                )
-                
-                # إظهار صفحة النتائج
-                st.divider()
-                st.subheader(t["result_h"])
-                st.write(response.choices[0].message.content)
+            if st.button("تحليل القرار"):
+                if not client: st.warning("يرجى إدخال API Key")
+                else: st.info("يتم التحليل الآن...")
