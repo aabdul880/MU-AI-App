@@ -1,17 +1,42 @@
 import streamlit as st
 from openai import OpenAI
 
-# إعدادات الصفحة
+# 1. إعدادات الصفحة وإخفاء معالم المنصة (لجعلها احترافية 100%)
 st.set_page_config(page_title="BDS - Decision Support", layout="wide")
 
-# --- إعدادات اللغة ---
+hide_elements = """
+    <style>
+    /* إخفاء الهيدر (بما فيه Fork و GitHub) */
+    header {visibility: hidden !important;}
+    [data-testid="stHeader"] {display: none !important;}
+    
+    /* إخفاء التذييل وعلامة Streamlit */
+    footer {display: none !important;}
+    #viewerBadge_container__1QS1n {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+
+    /* إبقاء زر القائمة (الثلاث نقاط) متاحاً في الجانب */
+    [data-testid="stToolbar"] {
+        visibility: visible !important;
+        top: 10px !important;
+        right: 10px !important;
+    }
+    
+    /* تنظيف المساحات */
+    .block-container {padding-top: 1rem !important;}
+    </style>
+"""
+st.markdown(hide_elements, unsafe_allow_html=True)
+
+# --- 2. إعدادات اللغة (في السايدبار) ---
 if 'lang' not in st.session_state:
     st.session_state.lang = 'Arabic'
 
+# اختيار اللغة من السايدبار (يظهر عند الضغط على الثلاث نقاط في الجوال)
 lang = st.sidebar.selectbox("Choose Language / اختر اللغة", ["Arabic", "English"])
 st.session_state.lang = lang
 
-# قاموس النصوص
+# قاموس النصوص (الكود الخاص بك)
 texts = {
     "Arabic": {
         "title": "🛡️ أداة تحليل القرارات الإدارية (BDS)",
@@ -97,7 +122,7 @@ texts = {
 
 t = texts[st.session_state.lang]
 
-# إدخال مفتاح API
+# إدخال مفتاح API في السايدبار
 api_key = st.sidebar.text_input(t["api_key"], type="password")
 client = OpenAI(api_key=api_key) if api_key else None
 
@@ -147,8 +172,6 @@ if decision_text:
         else:
             with st.spinner("Analyzing..."):
                 system_msg = f"Analyze this decision for a {st.session_state.lang} speaking leader. Context: Sector {org_sector}, Style {lead_style}, Trust {lead_trust}, Impact {impact_level}."
-                
-                # ملاحظة: الذكاء الاصطناعي سيرد بنفس لغة الواجهة المختارة
                 response = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
@@ -156,6 +179,5 @@ if decision_text:
                         {"role": "user", "content": f"Decision: {decision_text}. Please provide the analysis in {st.session_state.lang}."}
                     ]
                 )
-                
                 st.success(t["success_msg"])
                 st.write(response.choices[0].message.content)
