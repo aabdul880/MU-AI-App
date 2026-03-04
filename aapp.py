@@ -1,17 +1,25 @@
-{
-  "org_profile_sector": "القطاع",
-  "org_profile_size": "حجم المنظمة",
-  "org_profile_age": "عمر المنظمة",
-  "org_profile_change_acceptance": "تقبل الموظفين للتغيير عادة",
-  "org_profile_decision_independence": "مدى استقلالية المنظمة في اتخاذ القرارات",
-  "manager_profile_leadership_style": "الاسلوب القيادي",
-  "manager_profile_direct_reports": "عدد الموظفين تحت الاشراف المباشر",
-  "manager_profile_trust_level": "مستوى الثقة بينك وبين الفريق",
-  "manager_profile_team_tenure": "غالبية موظفيك",
-  "decision_input_text": "اكتب قرارك باختصار",
-  "decision_input_editability": "قابلية القرار للتعديل",
-  "decision_input_start_timing": "متى يبدأ التنفيذ",
-  "decision_input_visibility": "مدى معرفة الموظفين بالقرار",
-  "decision_input_affected_groups": "ماهي فئة الموظفين المتأثرين بالقرار",
-  "decision_input_impact_level": "ما مدى تأثر كل فئة"
-}
+# ابحث عن جزء التحليل في كودك واستبدله بهذا الجزء الذكي:
+
+if st.button(t["analyze"]):
+    if not client: 
+        st.warning("يرجى إدخال مفتاح API")
+    else:
+        # 1. إضافة دائرة الانتظار الاحترافية
+        with st.spinner("🧠 جاري الربط بين بيانات المنظمة ونظريات القيادة... انتظر قليلاً"):
+            try:
+                # 2. استخدام موديل mini للسرعة الهائلة
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini", 
+                    messages=[
+                        {"role": "system", "content": f"أنت خبير إداري تحلل القرارات بناءً على سياق المنظمة {st.session_state.org_sec} وأسلوب القائد."},
+                        {"role": "user", "content": f"حلل هذا القرار: {decision_input}"}
+                    ]
+                )
+                
+                # 3. إظهار النتيجة بشكل أنيق
+                st.success("✅ تم الانتهاء من التحليل")
+                st.markdown("---")
+                st.write(response.choices[0].message.content)
+                
+            except Exception as e:
+                st.error(f"حدث خطأ: {e}")
